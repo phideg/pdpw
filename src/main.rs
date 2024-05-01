@@ -4,13 +4,16 @@ use std::{
     path::{Path, PathBuf},
 };
 
+const PDPW_EXTENSION: &str = "pdpw";
+
 slint::slint! {
     import { TextEdit, VerticalBox, Button } from "std-widgets.slint";
 export component Passwords inherits Window {
-        in-out property<string> the_passwords: "foo";
+        in-out property<string> the_passwords: "";
+        in-out property<string> the_title: "PD Password";
         callback save_passwords();
         callback passwords-edited(string);
-        title: "PD Password";
+        title: the_title;
         VerticalBox {
             Button {
                 text: "Save";
@@ -30,23 +33,23 @@ export component Passwords inherits Window {
     }
 }
 
-fn decrypt_pdwd_file(pdwd_file: &Path) -> anyhow::Result<String> {
-    let passwords = if pdwd_file.extension().is_some_and(|e| e == "pdwd") {
-        if pdwd_file.exists() {
-            let encrypted = std::fs::read(pdwd_file)?;
+fn decrypt_pdpw_file(pdpw_file: &Path, pin: &str) -> anyhow::Result<String> {
+    let passwords = if pdpw_file.extension().is_some_and(|e| e == PDPW_EXTENSION) {
+        if pdpw_file.exists() {
+            let encrypted = std::fs::read(pdpw_file)?;
             let decryptor = match age::Decryptor::new(&encrypted[..])? {
                 age::Decryptor::Passphrase(d) => d,
                 _ => unreachable!(),
             };
             let mut decrypted = vec![];
-            let mut reader = decryptor.decrypt(&Secret::new("foo".to_owned()), None)?;
+            let mut reader = decryptor.decrypt(&Secret::new(pin.to_owned()), None)?;
             reader.read_to_end(&mut decrypted)?;
             String::from_utf8(decrypted)?
         } else {
             String::new()
         }
     } else {
-        eprintln!("{} is not a *.pdwd file", pdwd_file.display());
+        eprintln!("{} is not a *.{PDPW_EXTENSION} file", pdpw_file.display());
         std::process::exit(2);
     };
     Ok(passwords)
@@ -55,14 +58,16 @@ fn decrypt_pdwd_file(pdwd_file: &Path) -> anyhow::Result<String> {
 fn main() -> anyhow::Result<()> {
     // parse Arguments
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
+    if args.len() > 2 {
         eprintln!("Wrong number of arguments");
         let prog_name = args.first().map(|n| n.as_str()).unwrap_or("pdpw");
         println!("Synopsis:\n  {prog_name} <path-to-pdpw-file>");
         std::process::exit(1);
     }
-    let pdwd_file = Box::new(PathBuf::from(&args[1]));
-    let passwords = decrypt_pdwd_file(&pdwd_file)?;
+    let pdpw_file_param = args.get(1).map(String::as_str).unwrap_or("default.pdpw");
+    let pdpw_file_path = Box::new(PathBuf::from(pdpw_file_param));
+    let pin = rpassword::prompt_password("Please enter the PIN for your pdpw file: ")?;
+    let passwords = decrypt_pdpw_file(&pdpw_file_path, pin.as_str())?;
     let shared_pwds = slint::SharedString::from(&passwords);
     let main_window = Passwords::new()?;
     let ui_handle = main_window.as_weak();
@@ -76,17 +81,19 @@ fn main() -> anyhow::Result<()> {
         if let Some(ui) = ui_handle.upgrade() {
             let passwords = ui.get_the_passwords();
             let encrypted = {
-                let encryptor = age::Encryptor::with_user_passphrase(Secret::new("foo".to_owned()));
+                let encryptor = age::Encryptor::with_user_passphrase(Secret::new(pin.clone()));
                 let mut encrypted = vec![];
                 let mut writer = encryptor.wrap_output(&mut encrypted).unwrap();
                 writer.write_all(passwords.as_bytes()).unwrap();
                 writer.finish().unwrap();
                 encrypted
             };
-            std::fs::write(pdwd_file.as_path(), encrypted).unwrap();
+            std::fs::write(pdpw_file_path.as_path(), encrypted).unwrap();
         }
     });
     main_window.set_the_passwords(shared_pwds);
+    let title = slint::SharedString::from(format!("PD Password: {pdpw_file_param}"));
+    main_window.set_the_title(title);
     main_window.window().set_maximized(true);
     main_window.run()?;
     Ok(())
