@@ -1,0 +1,292 @@
+use iced::keyboard::key;
+use iced::widget::{
+    self, button, column, container, horizontal_space, row, text, text_editor, text_input,
+};
+use iced::{event, keyboard, Event};
+use iced::{Command, Element, Length, Subscription};
+
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use crate::store;
+
+#[derive(Debug)]
+enum ModalState {
+    Search,
+    Pin,
+    None,
+}
+
+pub(crate) struct Editor {
+    content: text_editor::Content,
+    error: Option<String>,
+    is_dirty: bool,
+    is_loading: bool,
+    modal: ModalState,
+    pdpw_file: PathBuf,
+    pin: String,
+    search_string: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum Message {
+    ActionPerformed(text_editor::Action),
+    ContentLoaded(Result<Arc<String>, Error>),
+    Event(Event),
+    FileSaved(Result<PathBuf, Error>),
+    HideModal,
+    LoadPdwpFile,
+    PinInput(String),
+    Search,
+    SearchString(String),
+    SetPdpwPath(PathBuf),
+}
+
+impl Editor {
+    fn new() -> Self {
+        Self {
+            content: text_editor::Content::new(),
+            error: None,
+            is_dirty: false,
+            is_loading: true,
+            modal: ModalState::Pin,
+            pdpw_file: PathBuf::new(),
+            pin: String::new(),
+            search_string: String::new(),
+        }
+    }
+
+    fn hide_modal(&mut self) {
+        self.modal = ModalState::None;
+        self.search_string.clear();
+    }
+
+    fn run_save_file(&mut self) -> Command<Message> {
+        if self.is_loading {
+            Command::none()
+        } else {
+            self.is_loading = true;
+            Command::perform(
+                save_file(self.pdpw_file.clone(), self.content.text()),
+                Message::FileSaved,
+            )
+        }
+    }
+
+    pub(crate) fn load(pdpw_file_path: &str) -> Command<Message> {
+        Command::perform(
+            set_pdpw_path(PathBuf::from(pdpw_file_path)),
+            Message::SetPdpwPath,
+        )
+    }
+
+    pub(crate) fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::ActionPerformed(action) => {
+                self.is_dirty = self.is_dirty || action.is_edit();
+                self.content.perform(action);
+                Command::none()
+            }
+            Message::ContentLoaded(result) => {
+                match result {
+                    Ok(contents) => self.content = text_editor::Content::with_text(&contents),
+                    Err(error) => {
+                        dbg!(&error);
+                        self.error = Some(format!("{error:?}"))
+                    },
+                }
+                Command::none()
+            }
+            Message::Event(event) => match event {
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Tab),
+                    modifiers,
+                    ..
+                }) => {
+                    if modifiers.shift() {
+                        widget::focus_previous()
+                    } else {
+                        widget::focus_next()
+                    }
+                }
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Character(c),
+                    modifiers,
+                    ..
+                }) if modifiers.command() => match c.as_str() {
+                    "s" => self.run_save_file(),
+                    "f" => {
+                        self.modal = ModalState::Search;
+                        widget::focus_next()
+                    }
+                    _ => Command::none(),
+                },
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Escape),
+                    ..
+                }) => {
+                    self.hide_modal();
+                    Command::none()
+                }
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Enter),
+                    ..
+                }) => {
+                    self.hide_modal();
+                    Command::none()
+                }
+                _ => Command::none(),
+            },
+            Message::LoadPdwpFile => {
+                self.is_loading = false;
+                if self.pin.is_empty() {
+                    Command::none()
+                } else {
+                    self.hide_modal();
+                    Command::perform(
+                        load_content(self.pdpw_file.clone(), self.pin.clone()),
+                        Message::ContentLoaded,
+                    )
+                }
+            }
+            Message::FileSaved(result) => {
+                self.is_loading = false;
+                if let Ok(path) = result {
+                    self.pdpw_file = path;
+                    self.is_dirty = false;
+                }
+                Command::none()
+            }
+            Message::HideModal => {
+                self.modal = ModalState::None;
+                Command::none()
+            }
+            Message::PinInput(pin) => {
+                self.pin = pin;
+                Command::none()
+            }
+            Message::Search => {
+                // here we need to search for the pattern and
+                // update the cursor
+                Command::none()
+            }
+            Message::SearchString(search_string) => {
+                self.search_string = search_string;
+                Command::none()
+            }
+            Message::SetPdpwPath(pdpw_file) => {
+                self.pdpw_file = pdpw_file;
+                Command::none()
+            }
+            _ => todo!(),
+        }
+    }
+
+    pub(crate) fn subscription(&self) -> Subscription<Message> {
+        event::listen().map(Message::Event)
+    }
+
+    pub(crate) fn view(&self) -> Element<Message> {
+        let info = if let Some(err_msg) = self.error.as_deref() {
+            err_msg.to_string()
+        } else {
+            self.pdpw_file.display().to_string()
+        };
+        let status = row![
+            text(if info.len() > 60 {
+                format!("...{}", &info[info.len() - 40..])
+            } else {
+                info
+            }),
+            horizontal_space(),
+            text({
+                let (line, column) = self.content.cursor_position();
+
+                format!("{}:{}", line + 1, column + 1)
+            })
+        ]
+        .spacing(10);
+
+        let content = column![
+            text_editor(&self.content)
+                .height(Length::Fill)
+                .on_action(Message::ActionPerformed),
+            status,
+        ]
+        .spacing(10)
+        .padding(10);
+
+        match self.modal {
+            ModalState::None => content.into(),
+            ModalState::Pin => {
+                let popup = container(
+                    column![
+                        text("Enter your master password").size(24),
+                        column![text_input("", &self.pin,)
+                            .on_input(Message::PinInput)
+                            .on_submit(Message::LoadPdwpFile)
+                            .padding(5),]
+                        .spacing(5),
+                        button(text("OK")).on_press(Message::LoadPdwpFile),
+                    ]
+                    .spacing(20),
+                )
+                .width(300)
+                .padding(10)
+                .style(container::rounded_box);
+                crate::modal::modal(content, popup, Message::HideModal)
+            }
+            ModalState::Search => {
+                let popup = container(
+                    column![
+                        text("Search pattern:").size(24),
+                        // text_input("", &self.search_string,)
+                        //     .on_input(Message::PasswordInput)
+                        //     .on_submit(Message::LoadPdwpFile)
+                        //     .padding(5),
+                        button(text("Search")).on_press(Message::HideModal),
+                    ]
+                    .spacing(20),
+                )
+                .width(300)
+                .padding(10)
+                .style(container::rounded_box);
+                crate::modal::modal(content, popup, Message::HideModal)
+            }
+        }
+    }
+}
+
+impl Default for Editor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    DialogClosed,
+    LoadError(String),
+    SaveError(String),
+    Unexpected(String),
+}
+
+async fn load_content(path: PathBuf, pin: String) -> Result<Arc<String>, Error> {
+    let contents = store::load_pdpw_file(path.as_path(), &pin)
+        .await
+        .map_err(|e| Error::LoadError(format!("Couldn't load *pdpw file from {path:?}: [{e}]")))?;
+    dbg!(&contents);
+    Ok(Arc::new(contents))
+}
+
+async fn set_pdpw_path(path: PathBuf) -> PathBuf {
+    path
+}
+
+async fn save_file(path: PathBuf, contents: String) -> Result<PathBuf, Error> {
+    tokio::fs::write(&path, contents)
+        .await
+        .map_err(|e| Error::SaveError(format!("{e}")))?;
+    Ok(path)
+}

@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-age = "0.10"
+age = { version = "0.10", features = ["async"] }
 anyhow = "1.0"
+iced = { git = "https://github.com/iced-rs/iced.git", features = ["tokio"] }
 rpassword = "7"
-slint = "1.5"
+tokio = { version = "1.35", features = ["fs"] }
