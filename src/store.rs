@@ -10,7 +10,6 @@ pub(crate) async fn load_pdpw_file(pdpw_file: &Path, pin: &str) -> anyhow::Resul
     let passwords = if pdpw_file.extension().is_some_and(|e| e == PDPW_EXTENSION) {
         if pdpw_file.exists() {
             let encrypted = tokio::fs::read(pdpw_file).await?;
-            dbg!(&encrypted);
             let decryptor = match age::Decryptor::new_async_buffered(encrypted.as_slice()).await? {
                 age::Decryptor::Passphrase(d) => d,
                 _ => unreachable!(),
@@ -29,15 +28,19 @@ pub(crate) async fn load_pdpw_file(pdpw_file: &Path, pin: &str) -> anyhow::Resul
     Ok(passwords)
 }
 
-pub(crate) fn write_pdpw_file(pdpw_file: &Path, pin: &str, passwords: &str) -> anyhow::Result<()> {
+pub(crate) async fn store_pdpw_file(
+    pdpw_file: &Path,
+    pin: &str,
+    passwords: &str,
+) -> anyhow::Result<()> {
     let encrypted = {
         let encryptor = age::Encryptor::with_user_passphrase(Secret::new(pin.to_string()));
         let mut encrypted = vec![];
-        let mut writer = encryptor.wrap_output(&mut encrypted)?;
+        let mut writer = encryptor.wrap_async_output(&mut encrypted).await?;
         writer.write_all(passwords.as_bytes())?;
         writer.finish()?;
         encrypted
     };
-    std::fs::write(pdpw_file, encrypted)?;
+    tokio::fs::write(pdpw_file, encrypted).await?;
     Ok(())
 }

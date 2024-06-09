@@ -5,11 +5,10 @@ use iced::widget::{
 use iced::{event, keyboard, Event};
 use iced::{Command, Element, Length, Subscription};
 
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::store;
+use crate::store::{self, load_pdpw_file, store_pdpw_file};
 
 #[derive(Debug)]
 enum ModalState {
@@ -17,7 +16,6 @@ enum ModalState {
     Pin,
     None,
 }
-
 pub(crate) struct Editor {
     content: text_editor::Content,
     error: Option<String>,
@@ -59,6 +57,7 @@ impl Editor {
 
     fn hide_modal(&mut self) {
         self.modal = ModalState::None;
+        self.error = None;
         self.search_string.clear();
     }
 
@@ -67,8 +66,13 @@ impl Editor {
             Command::none()
         } else {
             self.is_loading = true;
+            self.is_dirty = false;
             Command::perform(
-                save_file(self.pdpw_file.clone(), self.content.text()),
+                save_file(
+                    self.pdpw_file.clone(),
+                    self.pin.clone(),
+                    self.content.text(),
+                ),
                 Message::FileSaved,
             )
         }
@@ -90,11 +94,14 @@ impl Editor {
             }
             Message::ContentLoaded(result) => {
                 match result {
-                    Ok(contents) => self.content = text_editor::Content::with_text(&contents),
+                    Ok(contents) => {
+                        self.hide_modal();
+                        self.content = text_editor::Content::with_text(&contents)
+                    }
                     Err(error) => {
                         dbg!(&error);
                         self.error = Some(format!("{error:?}"))
-                    },
+                    }
                 }
                 Command::none()
             }
@@ -143,7 +150,6 @@ impl Editor {
                 if self.pin.is_empty() {
                     Command::none()
                 } else {
-                    self.hide_modal();
                     Command::perform(
                         load_content(self.pdpw_file.clone(), self.pin.clone()),
                         Message::ContentLoaded,
@@ -152,9 +158,12 @@ impl Editor {
             }
             Message::FileSaved(result) => {
                 self.is_loading = false;
-                if let Ok(path) = result {
-                    self.pdpw_file = path;
-                    self.is_dirty = false;
+                match result {
+                    Ok(path) => self.pdpw_file = path,
+                    Err(e) => {
+                        self.is_dirty = true;
+                        self.error = Some(format!("{e:?}"))
+                    }
                 }
                 Command::none()
             }
@@ -167,8 +176,13 @@ impl Editor {
                 Command::none()
             }
             Message::Search => {
-                // here we need to search for the pattern and
-                // update the cursor
+                // simple exact search
+                let text = self.content.text();
+                if let Some(found) = text.find(self.search_string.as_str()) {
+                    // update the cursor
+                    dbg!(found);
+                    self.content.perform(text_editor::Action::SelectWord);
+                }
                 Command::none()
             }
             Message::SearchString(search_string) => {
@@ -177,7 +191,7 @@ impl Editor {
             }
             Message::SetPdpwPath(pdpw_file) => {
                 self.pdpw_file = pdpw_file;
-                Command::none()
+                widget::focus_next()
             }
             _ => todo!(),
         }
@@ -188,11 +202,12 @@ impl Editor {
     }
 
     pub(crate) fn view(&self) -> Element<Message> {
-        let info = if let Some(err_msg) = self.error.as_deref() {
+        let mut info = if let Some(err_msg) = self.error.as_deref() {
             err_msg.to_string()
         } else {
             self.pdpw_file.display().to_string()
         };
+        info.push_str(if self.is_dirty { " [dirty]" } else { " [OK]" });
         let status = row![
             text(if info.len() > 60 {
                 format!("...{}", &info[info.len() - 40..])
@@ -241,10 +256,10 @@ impl Editor {
                 let popup = container(
                     column![
                         text("Search pattern:").size(24),
-                        // text_input("", &self.search_string,)
-                        //     .on_input(Message::PasswordInput)
-                        //     .on_submit(Message::LoadPdwpFile)
-                        //     .padding(5),
+                        text_input("", &self.search_string,)
+                            .on_input(Message::SearchString)
+                            .on_submit(Message::Search)
+                            .padding(5),
                         button(text("Search")).on_press(Message::HideModal),
                     ]
                     .spacing(20),
@@ -273,10 +288,9 @@ pub enum Error {
 }
 
 async fn load_content(path: PathBuf, pin: String) -> Result<Arc<String>, Error> {
-    let contents = store::load_pdpw_file(path.as_path(), &pin)
+    let contents = load_pdpw_file(path.as_path(), &pin)
         .await
         .map_err(|e| Error::LoadError(format!("Couldn't load *pdpw file from {path:?}: [{e}]")))?;
-    dbg!(&contents);
     Ok(Arc::new(contents))
 }
 
@@ -284,8 +298,8 @@ async fn set_pdpw_path(path: PathBuf) -> PathBuf {
     path
 }
 
-async fn save_file(path: PathBuf, contents: String) -> Result<PathBuf, Error> {
-    tokio::fs::write(&path, contents)
+async fn save_file(path: PathBuf, pin: String, contents: String) -> Result<PathBuf, Error> {
+    store_pdpw_file(&path, pin.as_str(), contents.as_str())
         .await
         .map_err(|e| Error::SaveError(format!("{e}")))?;
     Ok(path)
