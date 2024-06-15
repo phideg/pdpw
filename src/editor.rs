@@ -181,7 +181,7 @@ impl Editor {
                 if let Some(found) = text.find(self.search_string.as_str()) {
                     // update the cursor
                     dbg!(found);
-                    self.content.perform(text_editor::Action::SelectWord);
+                    self.content.perform(text_editor::Action::SelectLine);
                 }
                 Command::none()
             }
