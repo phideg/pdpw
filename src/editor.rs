@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::store::{self, load_pdpw_file, store_pdpw_file};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum ModalState {
     Search,
     Pin,
@@ -85,8 +85,10 @@ impl Editor {
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ActionPerformed(action) => {
-                self.is_dirty = self.is_dirty || action.is_edit();
-                self.content.perform(action);
+                if self.modal == ModalState::None {
+                    self.is_dirty = self.is_dirty || action.is_edit();
+                    self.content.perform(action);
+                }
                 Task::none()
             }
             Message::ContentLoaded(result) => {
