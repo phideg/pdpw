@@ -3,7 +3,7 @@ use iced::widget::{
     self, button, column, container, horizontal_space, row, text, text_editor, text_input,
 };
 use iced::{event, keyboard, Event};
-use iced::{Command, Element, Length, Subscription};
+use iced::{Element, Length, Subscription, Task};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -42,8 +42,8 @@ pub(crate) enum Message {
 }
 
 impl Editor {
-    fn new() -> Self {
-        Self {
+    pub(crate) fn new(pdpw_file_path: &str) -> (Self, Task<Message>) {
+        (Self {
             content: text_editor::Content::new(),
             error: None,
             is_dirty: false,
@@ -52,7 +52,11 @@ impl Editor {
             pdpw_file: PathBuf::new(),
             pin: String::new(),
             search_string: String::new(),
-        }
+        },
+        Task::perform(
+            set_pdpw_path(PathBuf::from(pdpw_file_path)),
+            Message::SetPdpwPath,
+        ))
     }
 
     fn hide_modal(&mut self) {
@@ -61,13 +65,13 @@ impl Editor {
         self.search_string.clear();
     }
 
-    fn run_save_file(&mut self) -> Command<Message> {
+    fn run_save_file(&mut self) -> Task<Message> {
         if self.is_loading {
-            Command::none()
+            Task::none()
         } else {
             self.is_loading = true;
             self.is_dirty = false;
-            Command::perform(
+            Task::perform(
                 save_file(
                     self.pdpw_file.clone(),
                     self.pin.clone(),
@@ -78,19 +82,12 @@ impl Editor {
         }
     }
 
-    pub(crate) fn load(pdpw_file_path: &str) -> Command<Message> {
-        Command::perform(
-            set_pdpw_path(PathBuf::from(pdpw_file_path)),
-            Message::SetPdpwPath,
-        )
-    }
-
-    pub(crate) fn update(&mut self, message: Message) -> Command<Message> {
+    pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ActionPerformed(action) => {
                 self.is_dirty = self.is_dirty || action.is_edit();
                 self.content.perform(action);
-                Command::none()
+                Task::none()
             }
             Message::ContentLoaded(result) => {
                 match result {
@@ -103,7 +100,7 @@ impl Editor {
                         self.error = Some(format!("{error:?}"))
                     }
                 }
-                Command::none()
+                Task::none()
             }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -127,30 +124,30 @@ impl Editor {
                         self.modal = ModalState::Search;
                         widget::focus_next()
                     }
-                    _ => Command::none(),
+                    _ => Task::none(),
                 },
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Escape),
                     ..
                 }) => {
                     self.hide_modal();
-                    Command::none()
+                    Task::none()
                 }
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Enter),
                     ..
                 }) => {
                     self.hide_modal();
-                    Command::none()
+                    Task::none()
                 }
-                _ => Command::none(),
+                _ => Task::none(),
             },
             Message::LoadPdwpFile => {
                 self.is_loading = false;
                 if self.pin.is_empty() {
-                    Command::none()
+                    Task::none()
                 } else {
-                    Command::perform(
+                    Task::perform(
                         load_content(self.pdpw_file.clone(), self.pin.clone()),
                         Message::ContentLoaded,
                     )
@@ -165,15 +162,15 @@ impl Editor {
                         self.error = Some(format!("{e:?}"))
                     }
                 }
-                Command::none()
+                Task::none()
             }
             Message::HideModal => {
                 self.modal = ModalState::None;
-                Command::none()
+                Task::none()
             }
             Message::PinInput(pin) => {
                 self.pin = pin;
-                Command::none()
+                Task::none()
             }
             Message::Search => {
                 // simple exact search
@@ -183,11 +180,11 @@ impl Editor {
                     dbg!(found);
                     self.content.perform(text_editor::Action::SelectLine);
                 }
-                Command::none()
+                Task::none()
             }
             Message::SearchString(search_string) => {
                 self.search_string = search_string;
-                Command::none()
+                Task::none()
             }
             Message::SetPdpwPath(pdpw_file) => {
                 self.pdpw_file = pdpw_file;
@@ -270,12 +267,6 @@ impl Editor {
                 crate::modal::modal(content, popup, Message::HideModal)
             }
         }
-    }
-}
-
-impl Default for Editor {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

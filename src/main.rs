@@ -19,10 +19,9 @@ fn main() -> anyhow::Result<()> {
         .map(String::clone)
         .unwrap_or("default.pdpw".to_string());
 
-    iced::program("pdpw - password store", Editor::update, Editor::view)
-        .load(move || Editor::load(&pdpw_file_param))
+    iced::application("pdpw - password store", Editor::update, Editor::view)
         .subscription(Editor::subscription)
         .default_font(iced::Font::MONOSPACE)
-        .run()?;
+        .run_with(move || Editor::new(&pdpw_file_param))?;
     Ok(())
 }
