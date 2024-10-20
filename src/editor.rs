@@ -2,13 +2,13 @@ use iced::keyboard::key;
 use iced::widget::{
     self, button, column, container, horizontal_space, row, text, text_editor, text_input,
 };
-use iced::{event, keyboard, Event};
-use iced::{Element, Length, Subscription, Task};
+use iced::{event, keyboard, Event, Task};
+use iced::{Element, Length, Subscription};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::store::{self, load_pdpw_file, store_pdpw_file};
+use crate::store::{load_pdpw_file, store_pdpw_file};
 
 #[derive(Debug, PartialEq)]
 enum ModalState {
@@ -43,20 +43,22 @@ pub(crate) enum Message {
 
 impl Editor {
     pub(crate) fn new(pdpw_file_path: &str) -> (Self, Task<Message>) {
-        (Self {
-            content: text_editor::Content::new(),
-            error: None,
-            is_dirty: false,
-            is_loading: true,
-            modal: ModalState::Pin,
-            pdpw_file: PathBuf::new(),
-            pin: String::new(),
-            search_string: String::new(),
-        },
-        Task::perform(
-            set_pdpw_path(PathBuf::from(pdpw_file_path)),
-            Message::SetPdpwPath,
-        ))
+        (
+            Self {
+                content: text_editor::Content::new(),
+                error: None,
+                is_dirty: false,
+                is_loading: true,
+                modal: ModalState::Pin,
+                pdpw_file: PathBuf::new(),
+                pin: String::new(),
+                search_string: String::new(),
+            },
+            Task::perform(
+                set_pdpw_path(PathBuf::from(pdpw_file_path)),
+                Message::SetPdpwPath,
+            ),
+        )
     }
 
     fn hide_modal(&mut self) {
@@ -102,7 +104,7 @@ impl Editor {
                         self.error = Some(format!("{error:?}"))
                     }
                 }
-                Task::none()
+                widget::focus_next()
             }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -124,7 +126,7 @@ impl Editor {
                     "s" => self.run_save_file(),
                     "f" => {
                         self.modal = ModalState::Search;
-                        widget::focus_next()
+                        text_input::focus("search-input")
                     }
                     _ => Task::none(),
                 },
@@ -179,10 +181,16 @@ impl Editor {
                 let text = self.content.text();
                 if let Some(found) = text.find(self.search_string.as_str()) {
                     // update the cursor
-                    dbg!(found);
-                    self.content.perform(text_editor::Action::SelectLine);
+                    self.content.perform(text_editor::Action::Move(
+                        text_editor::Motion::DocumentStart,
+                    ));
+                    for _ in text[..found].lines() {
+                        self.content
+                            .perform(text_editor::Action::Move(text_editor::Motion::Down));
+                    }
                 }
-                Task::none()
+                self.hide_modal();
+                widget::focus_next()
             }
             Message::SearchString(search_string) => {
                 self.search_string = search_string;
@@ -190,7 +198,7 @@ impl Editor {
             }
             Message::SetPdpwPath(pdpw_file) => {
                 self.pdpw_file = pdpw_file;
-                widget::focus_next()
+                text_input::focus("pin-input")
             }
             _ => todo!(),
         }
@@ -238,6 +246,7 @@ impl Editor {
                     column![
                         text("Enter your master password").size(24),
                         column![text_input("", &self.pin,)
+                            .id("pin-input")
                             .on_input(Message::PinInput)
                             .on_submit(Message::LoadPdwpFile)
                             .padding(5),]
@@ -256,6 +265,7 @@ impl Editor {
                     column![
                         text("Search pattern:").size(24),
                         text_input("", &self.search_string,)
+                            .id("search-input")
                             .on_input(Message::SearchString)
                             .on_submit(Message::Search)
                             .padding(5),
