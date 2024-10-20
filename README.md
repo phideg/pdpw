@@ -10,7 +10,12 @@ WIP: This is still very much in progress. So don't use it for now :)
 cargo install --path .
 ```
 
-Clearly the above only works if have installed a Rust compiler as described [here](https://www.rust-lang.org/tools/install)
+Clearly the above only works if the Rust compiler is installed as described [here](https://www.rust-lang.org/tools/install)
+
+## Basic shortcuts
+
+- `strg + s` encrypt and save changes to the *.pdpw file that you have opened. Typically `default.pdpw`
+- `strg + f` open the search dialog
 
 ## Configure Gnome Desktop integration
 
