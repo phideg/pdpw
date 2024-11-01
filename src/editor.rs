@@ -5,6 +5,7 @@ use iced::widget::{
 use iced::{event, keyboard, Event, Task};
 use iced::{Element, Length, Subscription};
 
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -200,7 +201,6 @@ impl Editor {
                 self.pdpw_file = pdpw_file;
                 text_input::focus("pin-input")
             }
-            _ => todo!(),
         }
     }
 
@@ -284,10 +284,19 @@ impl Editor {
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    DialogClosed,
+    // DialogClosed,
     LoadError(String),
     SaveError(String),
-    Unexpected(String),
+    // Unexpected(String),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::LoadError(s) => write!(f, "LoadError: {s}"),
+            Self::SaveError(s) => write!(f, "LoadError: {s}"),
+        }
+    }
 }
 
 async fn load_content(path: PathBuf, pin: String) -> Result<Arc<String>, Error> {

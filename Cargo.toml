@@ -1,6 +1,6 @@
 [package]
 name = "pdpw"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 age = { version = "0.10", features = ["async"] }
 anyhow = "1.0"
-iced = { git = "https://github.com/iced-rs/iced.git", features = ["tokio"] }
+dirs = "5"
+iced = { version = "0.13", features = ["tokio"] }
 rpassword = "7"
-tokio = { version = "1.35", features = ["fs"] }
+tokio = { version = "1.41", features = ["fs"] }
