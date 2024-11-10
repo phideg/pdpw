@@ -247,6 +247,7 @@ impl Editor {
                         text("Enter your master password").size(24),
                         column![text_input("", &self.pin,)
                             .id("pin-input")
+                            .secure(true)
                             .on_input(Message::PinInput)
                             .on_submit(Message::LoadPdwpFile)
                             .padding(5),]

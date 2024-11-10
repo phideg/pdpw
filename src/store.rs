@@ -1,6 +1,7 @@
-use age::secrecy::Secret;
+use age::secrecy::SecretString;
 use std::{
     io::{Read, Write},
+    iter,
     path::Path,
 };
 
@@ -10,12 +11,11 @@ pub(crate) async fn load_pdpw_file(pdpw_file: &Path, pin: &str) -> anyhow::Resul
     let passwords = if pdpw_file.extension().is_some_and(|e| e == PDPW_EXTENSION) {
         if pdpw_file.exists() {
             let encrypted = tokio::fs::read(pdpw_file).await?;
-            let decryptor = match age::Decryptor::new_async_buffered(encrypted.as_slice()).await? {
-                age::Decryptor::Passphrase(d) => d,
-                _ => unreachable!(),
-            };
+            let decryptor = age::Decryptor::new_async_buffered(encrypted.as_slice()).await?;
             let mut decrypted = vec![];
-            let mut reader = decryptor.decrypt_async(&Secret::new(pin.to_owned()), None)?;
+            let secret = SecretString::from(pin);
+            let mut reader =
+                decryptor.decrypt_async(iter::once(&age::scrypt::Identity::new(secret) as _))?;
             reader.read_to_end(&mut decrypted)?;
             String::from_utf8(decrypted)?
         } else {
@@ -34,7 +34,8 @@ pub(crate) async fn store_pdpw_file(
     passwords: &str,
 ) -> anyhow::Result<()> {
     let encrypted = {
-        let encryptor = age::Encryptor::with_user_passphrase(Secret::new(pin.to_string()));
+        let secret = SecretString::from(pin);
+        let encryptor = age::Encryptor::with_user_passphrase(secret);
         let mut encrypted = vec![];
         let mut writer = encryptor.wrap_async_output(&mut encrypted).await?;
         writer.write_all(passwords.as_bytes())?;
