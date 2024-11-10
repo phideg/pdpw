@@ -1,6 +1,6 @@
 use iced::keyboard::key;
 use iced::widget::{
-    self, button, column, container, horizontal_space, row, text, text_editor, text_input,
+    self, button, checkbox, column, container, horizontal_space, row, text, text_editor, text_input,
 };
 use iced::{event, keyboard, Event, Task};
 use iced::{Element, Length, Subscription};
@@ -26,6 +26,7 @@ pub(crate) struct Editor {
     pdpw_file: PathBuf,
     pin: String,
     search_string: String,
+    case_sensitive: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +40,7 @@ pub(crate) enum Message {
     PinInput(String),
     Search,
     SearchString(String),
+    ToggleCaseSensitive(bool),
     SetPdpwPath(PathBuf),
 }
 
@@ -54,6 +56,7 @@ impl Editor {
                 pdpw_file: PathBuf::new(),
                 pin: String::new(),
                 search_string: String::new(),
+                case_sensitive: false,
             },
             Task::perform(
                 set_pdpw_path(PathBuf::from(pdpw_file_path)),
@@ -179,8 +182,15 @@ impl Editor {
             }
             Message::Search => {
                 // simple exact search
-                let text = self.content.text();
-                if let Some(found) = text.find(self.search_string.as_str()) {
+                let (text, search_string) = if self.case_sensitive {
+                    (self.content.text(), self.search_string.clone())
+                } else {
+                    (
+                        self.content.text().to_lowercase(),
+                        self.search_string.to_lowercase(),
+                    )
+                };
+                if let Some(found) = text.find(search_string.as_str()) {
                     // update the cursor
                     self.content.perform(text_editor::Action::Move(
                         text_editor::Motion::DocumentStart,
@@ -195,6 +205,10 @@ impl Editor {
             }
             Message::SearchString(search_string) => {
                 self.search_string = search_string;
+                Task::none()
+            }
+            Message::ToggleCaseSensitive(is_checked) => {
+                self.case_sensitive = is_checked;
                 Task::none()
             }
             Message::SetPdpwPath(pdpw_file) => {
@@ -270,6 +284,8 @@ impl Editor {
                             .on_input(Message::SearchString)
                             .on_submit(Message::Search)
                             .padding(5),
+                        checkbox("case sensitive", self.case_sensitive)
+                            .on_toggle(Message::ToggleCaseSensitive),
                         button(text("Search")).on_press(Message::HideModal),
                     ]
                     .spacing(20),
@@ -285,10 +301,8 @@ impl Editor {
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    // DialogClosed,
     LoadError(String),
     SaveError(String),
-    // Unexpected(String),
 }
 
 impl Display for Error {

@@ -1,9 +1,13 @@
 # pdpw
 
-A very simple password store, that basically stores an encrypted textfile
-containing whatever you did put there.
+A very simple password store, that basically reads and writes an encrypted 
+textfile containing whatever you did put there 🤷‍♂️.
 
-WIP: This is still very much in progress. So don't use it for now :)
+⚠️ Disclaimer: This software is still `WIP`. Pdpw depends on the 
+[age crate](https://github.com/str4d/rage), which is in `beta` currently!.
+
+![screenshot](screenshot.png)
+
 
 ## How to to install 
 
@@ -17,11 +21,13 @@ Clearly the above only works if the Rust compiler is installed as described
 ## First steps
 
 If you start pdpw without providing a *.pdpw file it will create a
-`default.pdpw` in your HOME directory. Make sure to remember the password you
-initially use.
+`default.pdpw` in your HOME directory. 
+
+🚨 `Attention`: Make sure to remember the password you initially use. So far
+`pdpw` does not support changing the password.
 
 
-## Basic shortcuts
+## Shortcuts
 
 - `strg + s` encrypt and save changes to the *.pdpw file that you have opened.
   Typically `default.pdpw`
