@@ -15,6 +15,7 @@ use crate::store::{load_pdpw_file, store_pdpw_file};
 enum ModalState {
     Search,
     Pin,
+    UpdatePin,
     None,
 }
 pub(crate) struct Editor {
@@ -25,6 +26,8 @@ pub(crate) struct Editor {
     modal: ModalState,
     pdpw_file: PathBuf,
     pin: String,
+    old_pin: String,
+    new_pin: String,
     search_string: String,
     case_sensitive: bool,
 }
@@ -36,12 +39,18 @@ pub(crate) enum Message {
     Event(Event),
     FileSaved(Result<PathBuf, Error>),
     HideModal,
-    LoadPdwpFile,
+    LoadPdpwFile,
+    NewPinInput(String),
+    OldPinInput(String),
+    OpenSearch,
+    OpenSetPin,
     PinInput(String),
+    SavePdpwFile,
     Search,
     SearchString(String),
-    ToggleCaseSensitive(bool),
+    SetNewPassword,
     SetPdpwPath(PathBuf),
+    ToggleCaseSensitive(bool),
 }
 
 impl Editor {
@@ -55,6 +64,8 @@ impl Editor {
                 modal: ModalState::Pin,
                 pdpw_file: PathBuf::new(),
                 pin: String::new(),
+                old_pin: String::new(),
+                new_pin: String::new(),
                 search_string: String::new(),
                 case_sensitive: false,
             },
@@ -150,7 +161,7 @@ impl Editor {
                 }
                 _ => Task::none(),
             },
-            Message::LoadPdwpFile => {
+            Message::LoadPdpwFile => {
                 self.is_loading = false;
                 if self.pin.is_empty() {
                     Task::none()
@@ -159,6 +170,17 @@ impl Editor {
                         load_content(self.pdpw_file.clone(), self.pin.clone()),
                         Message::ContentLoaded,
                     )
+                }
+            }
+            Message::SavePdpwFile => self.run_save_file(),
+            Message::SetNewPassword => {
+                if self.pin != self.old_pin {
+                    self.error = Some("Old password does not match!".into());
+                    Task::none()
+                } else {
+                    self.pin = self.new_pin.clone();
+                    self.hide_modal();
+                    self.run_save_file()
                 }
             }
             Message::FileSaved(result) => {
@@ -179,6 +201,22 @@ impl Editor {
             Message::PinInput(pin) => {
                 self.pin = pin;
                 Task::none()
+            }
+            Message::OldPinInput(pin) => {
+                self.old_pin = pin;
+                Task::none()
+            }
+            Message::NewPinInput(pin) => {
+                self.new_pin = pin;
+                Task::none()
+            }
+            Message::OpenSearch => {
+                self.modal = ModalState::Search;
+                text_input::focus("search-input")
+            }
+            Message::OpenSetPin => {
+                self.modal = ModalState::UpdatePin;
+                text_input::focus("old-pin-input")
             }
             Message::Search => {
                 // simple exact search
@@ -223,6 +261,13 @@ impl Editor {
     }
 
     pub(crate) fn view(&self) -> Element<Message> {
+        let buttons = row![
+            button(text("Save")).on_press(Message::SavePdpwFile),
+            button(text("Search")).on_press(Message::OpenSearch),
+            button(text("Set Pin")).on_press(Message::OpenSetPin)
+        ]
+        .spacing(10);
+
         let mut info = if let Some(err_msg) = self.error.as_deref() {
             err_msg.to_string()
         } else {
@@ -245,6 +290,7 @@ impl Editor {
         .spacing(10);
 
         let content = column![
+            buttons,
             text_editor(&self.content)
                 .height(Length::Fill)
                 .on_action(Message::ActionPerformed),
@@ -263,10 +309,37 @@ impl Editor {
                             .id("pin-input")
                             .secure(true)
                             .on_input(Message::PinInput)
-                            .on_submit(Message::LoadPdwpFile)
+                            .on_submit(Message::LoadPdpwFile)
                             .padding(5),]
                         .spacing(5),
-                        button(text("OK")).on_press(Message::LoadPdwpFile),
+                        button(text("OK")).on_press(Message::LoadPdpwFile),
+                    ]
+                    .spacing(20),
+                )
+                .width(300)
+                .padding(10)
+                .style(container::rounded_box);
+                crate::modal::modal(content, popup, Message::HideModal)
+            }
+            ModalState::UpdatePin => {
+                let popup = container(
+                    column![
+                        text("Old password").size(24),
+                        column![text_input("", &self.old_pin,)
+                            .id("old-pin-input")
+                            .secure(true)
+                            .on_input(Message::OldPinInput)
+                            .padding(5),]
+                        .spacing(5),
+                        text("New password").size(24),
+                        column![text_input("", &self.new_pin)
+                            .id("new-pin-input")
+                            .secure(true)
+                            .on_input(Message::NewPinInput)
+                            .on_submit(Message::SetNewPassword)
+                            .padding(5),]
+                        .spacing(5),
+                        button(text("OK")).on_press(Message::SetNewPassword),
                     ]
                     .spacing(20),
                 )

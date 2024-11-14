@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 mod editor;
 mod modal;
 mod store;
