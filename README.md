@@ -18,13 +18,11 @@ cargo install --path .
 Clearly the above only works if the Rust compiler is installed as described
 [here](https://www.rust-lang.org/tools/install)
 
+
 ## First steps
 
 If you start pdpw without providing a *.pdpw file it will create a
 `default.pdpw` in your HOME directory. 
-
-🚨 `Attention`: Make sure to remember the password you initially use. So far
-`pdpw` does not support changing the password.
 
 
 ## Shortcuts
@@ -32,6 +30,7 @@ If you start pdpw without providing a *.pdpw file it will create a
 - `strg + s` encrypt and save changes to the *.pdpw file that you have opened.
   Typically `default.pdpw`
 - `strg + f` open the search dialog
+
 
 ## Configure Gnome Desktop integration
 
