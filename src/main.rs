@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 mod editor;
+mod galloc;
 mod modal;
 mod store;
 
