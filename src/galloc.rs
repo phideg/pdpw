@@ -1,20 +1,15 @@
-mod platform;
-
-use std::{alloc::Layout, ptr::NonNull};
-
-pub(crate) type Pointer<T> = Option<NonNull<T>>;
+use std::alloc::Layout;
 
 pub(crate) struct SecureGlobalAlloc;
 
 unsafe impl std::alloc::GlobalAlloc for SecureGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        match self.allocate(layout) {
-            Ok(address) => address.cast().as_ptr(),
-            Err(_) => ptr::null_mut(),
-        }
+        std::alloc::System.alloc(layout)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        platform::return_memory(NonNull::new_unchecked(ptr));
+        let raw_slice = std::slice::from_raw_parts_mut(ptr, layout.size());
+        raw_slice.fill(0xFF);
+        std::alloc::System.dealloc(ptr, layout)
     }
 }

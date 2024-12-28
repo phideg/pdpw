@@ -1,15 +1,18 @@
 # pdpw
 
-A very simple password store, that basically reads and writes an encrypted 
+A very simple password store, that basically reads and writes an encrypted
 textfile containing whatever you did put there 🤷‍♂️.
 
-⚠️ Disclaimer: This software is still `WIP`. Pdpw depends on the 
+⚠️ Disclaimer: This software is still `WIP`. Pdpw depends on the
 [age crate](https://github.com/str4d/rage), which is in `beta` currently!.
 
 ![screenshot](screenshot.png)
 
+📢 Note: pdpw implements a forwarding Global Allocator to write a free pattern,
+after memory got released. That way passwords no do not remain as clear text in
+main memory.
 
-## How to to install 
+## How to to install
 
 ```shell
 cargo install --path .
@@ -22,7 +25,7 @@ Clearly the above only works if the Rust compiler is installed as described
 ## First steps
 
 If you start pdpw without providing a *.pdpw file it will create a
-`default.pdpw` in your HOME directory. 
+`default.pdpw` in your HOME directory.
 
 
 ## Shortcuts

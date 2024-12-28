@@ -5,6 +5,10 @@ mod modal;
 mod store;
 
 use editor::Editor;
+use galloc::SecureGlobalAlloc;
+
+#[global_allocator]
+static GA: galloc::SecureGlobalAlloc = SecureGlobalAlloc;
 
 const DEFAULT_FILE_NAME: &str = "default.pdpw";
 
