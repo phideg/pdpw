@@ -11,7 +11,7 @@ textfile containing whatever you did put there 🤷‍♂️.
 📢 Note: pdpw implements a forwarding Global Allocator to write a free pattern,
 after memory got released. That way passwords no do not remain as clear text in
 main memory. Also as soon as you close pdpw it will cleanup your clipboard in 
-order to minimize leakage of the password. In case you do not copy and paste your
+order to prevent leakage of passwords. In case you do not copy and paste your
 passwords and just look them up and type them manually you can opt out of the
 cleanup step using the `--skip-clipboard-cleanup` command line flag. 
 
