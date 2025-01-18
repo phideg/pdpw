@@ -58,6 +58,6 @@ Name=PD Password
 Comment=Encrypted File as Password Manager
 Icon=/usr/share/icons/breeze/mimetypes/16/application-pgp-keys.svg
 Exec=pdpw %F
-Terminal=true
+Terminal=false
 Categories=Utility;TextEditor
 ```

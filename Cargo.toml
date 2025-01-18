@@ -1,6 +1,6 @@
 [package]
 name = "pdpw"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,7 +8,7 @@ edition = "2021"
 age = { version = "0.11", features = ["async"] }
 anyhow = { version = "1.0" }
 arboard = { version = "3.4" }
-dirs = { version = "5" }
+dirs = { version = "6" }
 iced = { version = "0.13", features = ["tokio"] }
 rpassword = { version = "7" }
 tokio = { version = "1.43", features = ["fs"] }
