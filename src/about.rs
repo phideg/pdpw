@@ -1,6 +1,6 @@
 use iced::widget::{button, center, column, text};
-use iced::{window, Font};
 use iced::{Center, Element, Task};
+use iced::{Font, window};
 
 #[derive(Default)]
 pub(crate) struct MsgPopup {

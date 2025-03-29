@@ -2,8 +2,8 @@ use iced::keyboard::key;
 use iced::widget::{
     self, button, checkbox, column, container, horizontal_space, row, text, text_editor, text_input,
 };
-use iced::{event, keyboard, Event, Task};
 use iced::{Element, Length, Subscription};
+use iced::{Event, Task, event, keyboard};
 
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -305,12 +305,14 @@ impl Editor {
                 let popup = container(
                     column![
                         text("Enter your master password").size(24),
-                        column![text_input("", &self.pin,)
-                            .id("pin-input")
-                            .secure(true)
-                            .on_input(Message::PinInput)
-                            .on_submit(Message::LoadPdpwFile)
-                            .padding(5),]
+                        column![
+                            text_input("", &self.pin,)
+                                .id("pin-input")
+                                .secure(true)
+                                .on_input(Message::PinInput)
+                                .on_submit(Message::LoadPdpwFile)
+                                .padding(5),
+                        ]
                         .spacing(5),
                         button(text("OK")).on_press(Message::LoadPdpwFile),
                     ]
@@ -325,19 +327,23 @@ impl Editor {
                 let popup = container(
                     column![
                         text("Old password").size(24),
-                        column![text_input("", &self.old_pin,)
-                            .id("old-pin-input")
-                            .secure(true)
-                            .on_input(Message::OldPinInput)
-                            .padding(5),]
+                        column![
+                            text_input("", &self.old_pin,)
+                                .id("old-pin-input")
+                                .secure(true)
+                                .on_input(Message::OldPinInput)
+                                .padding(5),
+                        ]
                         .spacing(5),
                         text("New password").size(24),
-                        column![text_input("", &self.new_pin)
-                            .id("new-pin-input")
-                            .secure(true)
-                            .on_input(Message::NewPinInput)
-                            .on_submit(Message::SetNewPassword)
-                            .padding(5),]
+                        column![
+                            text_input("", &self.new_pin)
+                                .id("new-pin-input")
+                                .secure(true)
+                                .on_input(Message::NewPinInput)
+                                .on_submit(Message::SetNewPassword)
+                                .padding(5),
+                        ]
                         .spacing(5),
                         button(text("OK")).on_press(Message::SetNewPassword),
                     ]

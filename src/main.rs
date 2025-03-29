@@ -8,7 +8,7 @@ mod store;
 use std::io::IsTerminal;
 
 use about::MsgPopup;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use editor::Editor;
 use galloc::SecureGlobalAlloc;
 
