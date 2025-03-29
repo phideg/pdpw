@@ -11,4 +11,4 @@ arboard = { version = "3.4" }
 dirs = { version = "6" }
 iced = { version = "0.13", features = ["tokio"] }
 rpassword = { version = "7" }
-tokio = { version = "1.43", features = ["fs"] }
+tokio = { version = "1.44", features = ["fs"] }
