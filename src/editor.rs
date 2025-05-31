@@ -41,6 +41,7 @@ pub(crate) enum Message {
     HideModal,
     LoadPdpwFile,
     NewPinInput(String),
+    NoHideModal,
     OldPinInput(String),
     OpenSearch,
     OpenSetPin,
@@ -198,6 +199,10 @@ impl Editor {
                 self.modal = ModalState::None;
                 Task::none()
             }
+            Message::NoHideModal => {
+                self.error = Some("Please finish the dialog first!".into());
+                Task::none()
+            }
             Message::PinInput(pin) => {
                 self.pin = pin;
                 Task::none()
@@ -321,7 +326,7 @@ impl Editor {
                 .width(300)
                 .padding(10)
                 .style(container::rounded_box);
-                crate::modal::modal(content, popup, Message::HideModal)
+                crate::modal::modal(content, popup, Message::NoHideModal)
             }
             ModalState::UpdatePin => {
                 let popup = container(
