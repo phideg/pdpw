@@ -27,17 +27,16 @@ impl Cli {
     fn print_help(prog_name: &str, err: Option<&str>) {
         let mut help_message = format!(
             r#"
-Simple passvault application [v{}]
+Simple passvault application [v{VERSION}]
 
 Synopsis:
-    {} [OPTIONS] <path-to-pdpw-file>
+    {prog_name} [OPTIONS] <path-to-pdpw-file>
 
 Options:
     --skip-clipboard-cleanup      Do not cleanup OS clipboard on program exit
     --help                        Print this message
 
-"#,
-            VERSION, prog_name
+"#
         );
         if let Some(err_msg) = err.as_ref() {
             help_message = format!("{err_msg}\n\n{help_message}");
