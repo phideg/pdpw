@@ -9,6 +9,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::VERSION;
 use crate::store::{load_pdpw_file, store_pdpw_file};
 
 #[derive(Debug, PartialEq)]
@@ -150,14 +151,18 @@ impl Editor {
                     key: keyboard::Key::Named(key::Named::Escape),
                     ..
                 }) => {
-                    self.hide_modal();
+                    if self.modal != ModalState::Pin {
+                        self.hide_modal();
+                    }
                     Task::none()
                 }
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Enter),
                     ..
                 }) => {
-                    self.hide_modal();
+                    if self.modal != ModalState::Pin {
+                        self.hide_modal();
+                    }
                     Task::none()
                 }
                 _ => Task::none(),
@@ -266,12 +271,15 @@ impl Editor {
     }
 
     pub(crate) fn view(&self) -> Element<Message> {
-        let buttons = row![
+        let header = row![
             button(text("Save")).on_press(Message::SavePdpwFile),
             button(text("Search")).on_press(Message::OpenSearch),
-            button(text("Set Pin")).on_press(Message::OpenSetPin)
+            button(text("Set Pin")).on_press(Message::OpenSetPin),
+            horizontal_space(),
+            text(format!("v{VERSION}")),
         ]
-        .spacing(10);
+        .spacing(10)
+        .align_y(iced::Alignment::Center);
 
         let mut info = if let Some(err_msg) = self.error.as_deref() {
             err_msg.to_string()
@@ -295,7 +303,7 @@ impl Editor {
         .spacing(10);
 
         let content = column![
-            buttons,
+            header,
             text_editor(&self.content)
                 .height(Length::Fill)
                 .on_action(Message::ActionPerformed),
