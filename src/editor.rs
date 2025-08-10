@@ -378,7 +378,7 @@ impl Editor {
                             .padding(5),
                         checkbox("case sensitive", self.case_sensitive)
                             .on_toggle(Message::ToggleCaseSensitive),
-                        button(text("Search")).on_press(Message::HideModal),
+                        button(text("Search")).on_press(Message::Search),
                     ]
                     .spacing(20),
                 )
