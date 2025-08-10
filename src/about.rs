@@ -21,7 +21,7 @@ impl MsgPopup {
         window::get_latest().and_then(window::close)
     }
 
-    pub(crate) fn view(&self) -> Element<Message> {
+    pub(crate) fn view(&'_ self) -> Element<'_, Message> {
         let content = column![
             text(&self.msg).font(Font::MONOSPACE),
             button("Yes, exit now")

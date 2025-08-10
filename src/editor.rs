@@ -270,7 +270,7 @@ impl Editor {
         event::listen().map(Message::Event)
     }
 
-    pub(crate) fn view(&self) -> Element<Message> {
+    pub(crate) fn view(&'_ self) -> Element<'_, Message> {
         let header = row![
             button(text("Save")).on_press(Message::SavePdpwFile),
             button(text("Search")).on_press(Message::OpenSearch),
