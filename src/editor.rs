@@ -81,7 +81,6 @@ impl Editor {
     fn hide_modal(&mut self) {
         self.modal = ModalState::None;
         self.error = None;
-        self.search_string.clear();
     }
 
     fn run_save_file(&mut self) -> Task<Message> {
@@ -139,7 +138,7 @@ impl Editor {
                     key: keyboard::Key::Character(c),
                     modifiers,
                     ..
-                }) if modifiers.command() => match c.as_str() {
+                }) if modifiers.command() && self.modal != ModalState::Pin => match c.as_str() {
                     "s" => self.run_save_file(),
                     "f" => {
                         self.modal = ModalState::Search;
@@ -147,6 +146,15 @@ impl Editor {
                     }
                     _ => Task::none(),
                 },
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::F3),
+                    ..
+                }) => {
+                    if self.modal == ModalState::None {
+                        self.execute_search(true);
+                    }
+                    Task::none()
+                }
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Escape),
                     ..
@@ -260,6 +268,7 @@ impl Editor {
                     }
                 }
                 self.hide_modal();
+                // self.execute_search(false);
                 widget::focus_next()
             }
             Message::SearchString(search_string) => {
@@ -274,6 +283,57 @@ impl Editor {
                 self.pdpw_file = pdpw_file;
                 text_input::focus("pin-input")
             }
+        }
+    }
+
+    fn execute_search(&mut self, skip_current: bool) {
+        if self.search_string.is_empty() {
+            self.error = Some("Search string cannot be empty!".into());
+            self.modal = ModalState::Search;
+            return;
+        }
+        // simple exact search
+        let (text, search_string) = if self.case_sensitive {
+            (self.content.text(), self.search_string.clone())
+        } else {
+            (
+                self.content.text().to_lowercase(),
+                self.search_string.to_lowercase(),
+            )
+        };
+        let (mut curr_line, _) = self.content.cursor_position();
+        if skip_current {
+            // skip current line
+            self.content
+                        .perform(text_editor::Action::SelectLine);
+            self.content
+                        .perform(text_editor::Action::SelectLine);
+            self.content
+                .perform(text_editor::Action::Move(text_editor::Motion::Down));
+            curr_line += 1;
+        }
+        for line in text.lines().skip(curr_line) {
+            dbg!(&line, &curr_line);;
+            if let Some(found) = line.find(search_string.as_str()) {
+                // update column of the cursor
+                self.content
+                    .perform(text_editor::Action::Move(text_editor::Motion::Home));
+                dbg!(&found);
+                // move to the right until we find the search string
+                for _ in 0..found {
+                    self.content
+                        .perform(text_editor::Action::Move(text_editor::Motion::Right));
+                }
+                // select the search string
+                for _ in search_string.chars() {
+                    self.content
+                        .perform(text_editor::Action::Select(text_editor::Motion::Right));
+                }
+                break;
+            }
+            // update line of the cursor
+            self.content
+                .perform(text_editor::Action::Move(text_editor::Motion::Down));
         }
     }
 
