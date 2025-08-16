@@ -81,7 +81,6 @@ impl Editor {
     fn hide_modal(&mut self) {
         self.modal = ModalState::None;
         self.error = None;
-        self.search_string.clear();
     }
 
     fn run_save_file(&mut self) -> Task<Message> {
@@ -116,10 +115,7 @@ impl Editor {
                         self.hide_modal();
                         self.content = text_editor::Content::with_text(&contents)
                     }
-                    Err(error) => {
-                        dbg!(&error);
-                        self.error = Some(format!("{error:?}"))
-                    }
+                    Err(error) => self.error = Some(format!("{error:?}")),
                 }
                 widget::focus_next()
             }
@@ -139,7 +135,7 @@ impl Editor {
                     key: keyboard::Key::Character(c),
                     modifiers,
                     ..
-                }) if modifiers.command() => match c.as_str() {
+                }) if modifiers.command() && self.modal != ModalState::Pin => match c.as_str() {
                     "s" => self.run_save_file(),
                     "f" => {
                         self.modal = ModalState::Search;
@@ -147,6 +143,15 @@ impl Editor {
                     }
                     _ => Task::none(),
                 },
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::F3),
+                    ..
+                }) => {
+                    if self.modal == ModalState::None {
+                        self.execute_search(true);
+                    }
+                    Task::none()
+                }
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Escape),
                     ..
@@ -229,37 +234,8 @@ impl Editor {
                 text_input::focus("old-pin-input")
             }
             Message::Search => {
-                // simple exact search
-                let (text, search_string) = if self.case_sensitive {
-                    (self.content.text(), self.search_string.clone())
-                } else {
-                    (
-                        self.content.text().to_lowercase(),
-                        self.search_string.to_lowercase(),
-                    )
-                };
-                for (line_number, line) in text.lines().enumerate() {
-                    dbg!(line);
-                    if let Some(offset) = line.find(search_string.as_str()) {
-                        // move the cursor to the right line
-                        self.content.perform(text_editor::Action::Move(
-                            text_editor::Motion::DocumentStart,
-                        ));
-                        for _ in 0..line_number {
-                            self.content
-                                .perform(text_editor::Action::Move(text_editor::Motion::Down));
-                        }
-                        // move the cursor to the right offset
-                        self.content
-                            .perform(text_editor::Action::Move(text_editor::Motion::Home));
-                        for _ in 0..offset {
-                            self.content
-                                .perform(text_editor::Action::Move(text_editor::Motion::Right));
-                        }
-                        break;
-                    }
-                }
                 self.hide_modal();
+                self.execute_search(false);
                 widget::focus_next()
             }
             Message::SearchString(search_string) => {
@@ -273,6 +249,64 @@ impl Editor {
             Message::SetPdpwPath(pdpw_file) => {
                 self.pdpw_file = pdpw_file;
                 text_input::focus("pin-input")
+            }
+        }
+    }
+
+    fn execute_search(&mut self, skip_current: bool) {
+        if self.search_string.is_empty() {
+            self.error = Some("Search string cannot be empty!".into());
+            self.modal = ModalState::Search;
+            return;
+        }
+        // simple exact search
+        let (text, search_string) = if self.case_sensitive {
+            (self.content.text(), self.search_string.clone())
+        } else {
+            (
+                self.content.text().to_lowercase(),
+                self.search_string.to_lowercase(),
+            )
+        };
+        let (cursor_line, cursor_offset) = self.content.cursor_position();
+        for (line_number, line) in text.lines().enumerate() {
+            if line_number >= cursor_line
+                && let Some(mut offset) = line.find(search_string.as_str())
+            {
+                if line_number == cursor_line
+                    && (offset < cursor_offset || (offset == cursor_offset && skip_current))
+                {
+                    let updated_search_offset = cursor_offset + 1;
+                    if updated_search_offset < line.len()
+                        && let Some(delta_offset) =
+                            line[updated_search_offset..].find(search_string.as_str())
+                    {
+                        offset = updated_search_offset + delta_offset;
+                    } else {
+                        continue;
+                    }
+                }
+                // move the cursor to the right line
+                self.content.perform(text_editor::Action::Move(
+                    text_editor::Motion::DocumentStart,
+                ));
+                for _ in 0..line_number {
+                    self.content
+                        .perform(text_editor::Action::Move(text_editor::Motion::Down));
+                }
+                // move the cursor to the right offset
+                self.content
+                    .perform(text_editor::Action::Move(text_editor::Motion::Home));
+                for _ in 0..offset {
+                    self.content
+                        .perform(text_editor::Action::Move(text_editor::Motion::Right));
+                }
+                // select the search string
+                for _ in search_string.chars() {
+                    self.content
+                        .perform(text_editor::Action::Select(text_editor::Motion::Right));
+                }
+                break;
             }
         }
     }
