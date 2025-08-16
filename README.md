@@ -36,6 +36,7 @@ If you start pdpw without providing a *.pdpw file it will create a
 - `strg + s` encrypt and save changes to the *.pdpw file that you have opened.
   Typically `default.pdpw`
 - `strg + f` open the search dialog
+- `F3` continue search
 
 
 ## Configure Gnome Desktop integration
