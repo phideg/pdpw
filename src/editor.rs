@@ -238,14 +238,25 @@ impl Editor {
                         self.search_string.to_lowercase(),
                     )
                 };
-                if let Some(found) = text.find(search_string.as_str()) {
-                    // update the cursor
-                    self.content.perform(text_editor::Action::Move(
-                        text_editor::Motion::DocumentStart,
-                    ));
-                    for _ in text[..found].lines() {
+                for (line_number, line) in text.lines().enumerate() {
+                    dbg!(line);
+                    if let Some(offset) = line.find(search_string.as_str()) {
+                        // move the cursor to the right line
+                        self.content.perform(text_editor::Action::Move(
+                            text_editor::Motion::DocumentStart,
+                        ));
+                        for _ in 0..line_number {
+                            self.content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Down));
+                        }
+                        // move the cursor to the right offset
                         self.content
-                            .perform(text_editor::Action::Move(text_editor::Motion::Down));
+                            .perform(text_editor::Action::Move(text_editor::Motion::Home));
+                        for _ in 0..offset {
+                            self.content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Right));
+                        }
+                        break;
                     }
                 }
                 self.hide_modal();
