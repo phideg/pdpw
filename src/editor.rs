@@ -115,10 +115,7 @@ impl Editor {
                         self.hide_modal();
                         self.content = text_editor::Content::with_text(&contents)
                     }
-                    Err(error) => {
-                        dbg!(&error);
-                        self.error = Some(format!("{error:?}"))
-                    }
+                    Err(error) => self.error = Some(format!("{error:?}")),
                 }
                 widget::focus_next()
             }
@@ -237,38 +234,8 @@ impl Editor {
                 text_input::focus("old-pin-input")
             }
             Message::Search => {
-                // simple exact search
-                let (text, search_string) = if self.case_sensitive {
-                    (self.content.text(), self.search_string.clone())
-                } else {
-                    (
-                        self.content.text().to_lowercase(),
-                        self.search_string.to_lowercase(),
-                    )
-                };
-                for (line_number, line) in text.lines().enumerate() {
-                    dbg!(line);
-                    if let Some(offset) = line.find(search_string.as_str()) {
-                        // move the cursor to the right line
-                        self.content.perform(text_editor::Action::Move(
-                            text_editor::Motion::DocumentStart,
-                        ));
-                        for _ in 0..line_number {
-                            self.content
-                                .perform(text_editor::Action::Move(text_editor::Motion::Down));
-                        }
-                        // move the cursor to the right offset
-                        self.content
-                            .perform(text_editor::Action::Move(text_editor::Motion::Home));
-                        for _ in 0..offset {
-                            self.content
-                                .perform(text_editor::Action::Move(text_editor::Motion::Right));
-                        }
-                        break;
-                    }
-                }
                 self.hide_modal();
-                // self.execute_search(false);
+                self.execute_search(false);
                 widget::focus_next()
             }
             Message::SearchString(search_string) => {
@@ -301,26 +268,36 @@ impl Editor {
                 self.search_string.to_lowercase(),
             )
         };
-        let (mut curr_line, _) = self.content.cursor_position();
-        if skip_current {
-            // skip current line
-            self.content
-                        .perform(text_editor::Action::SelectLine);
-            self.content
-                        .perform(text_editor::Action::SelectLine);
-            self.content
-                .perform(text_editor::Action::Move(text_editor::Motion::Down));
-            curr_line += 1;
-        }
-        for line in text.lines().skip(curr_line) {
-            dbg!(&line, &curr_line);;
-            if let Some(found) = line.find(search_string.as_str()) {
-                // update column of the cursor
+        let (cursor_line, cursor_offset) = self.content.cursor_position();
+        for (line_number, line) in text.lines().enumerate() {
+            if line_number >= cursor_line
+                && let Some(mut offset) = line.find(search_string.as_str())
+            {
+                if line_number == cursor_line
+                    && (offset < cursor_offset || (offset == cursor_offset && skip_current))
+                {
+                    let updated_search_offset = cursor_offset + 1;
+                    if updated_search_offset < line.len()
+                        && let Some(delta_offset) =
+                            line[updated_search_offset..].find(search_string.as_str())
+                    {
+                        offset = updated_search_offset + delta_offset;
+                    } else {
+                        continue;
+                    }
+                }
+                // move the cursor to the right line
+                self.content.perform(text_editor::Action::Move(
+                    text_editor::Motion::DocumentStart,
+                ));
+                for _ in 0..line_number {
+                    self.content
+                        .perform(text_editor::Action::Move(text_editor::Motion::Down));
+                }
+                // move the cursor to the right offset
                 self.content
                     .perform(text_editor::Action::Move(text_editor::Motion::Home));
-                dbg!(&found);
-                // move to the right until we find the search string
-                for _ in 0..found {
+                for _ in 0..offset {
                     self.content
                         .perform(text_editor::Action::Move(text_editor::Motion::Right));
                 }
@@ -331,9 +308,6 @@ impl Editor {
                 }
                 break;
             }
-            // update line of the cursor
-            self.content
-                .perform(text_editor::Action::Move(text_editor::Motion::Down));
         }
     }
 
