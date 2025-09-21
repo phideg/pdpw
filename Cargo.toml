@@ -1,13 +1,13 @@
 [package]
 name = "pdpw"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 age = { version = "0.11.1", features = ["async"] }
-anyhow = { version = "1.0.99" }
-arboard = { version = "3.6.0" }
+anyhow = { version = "1.0.100" }
+arboard = { version = "3.6.1" }
 dirs = { version = "6.0.0" }
 iced = { version = "0.13.1", features = ["tokio"] }
 rpassword = { version = "7.4.0" }
