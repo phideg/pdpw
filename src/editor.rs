@@ -1,6 +1,7 @@
 use iced::keyboard::key;
+use iced::widget::operation::{focus, focus_next, focus_previous};
 use iced::widget::{
-    self, button, checkbox, column, container, horizontal_space, row, text, text_editor, text_input,
+    Space, button, checkbox, column, container, row, text, text_editor, text_input,
 };
 use iced::{Element, Length, Subscription};
 use iced::{Event, Task, event, keyboard};
@@ -56,7 +57,7 @@ pub(crate) enum Message {
 }
 
 impl Editor {
-    pub(crate) fn new(pdpw_file_path: &str) -> (Self, Task<Message>) {
+    pub(crate) fn new(pdpw_file_path: std::sync::Arc<String>) -> (Self, Task<Message>) {
         (
             Self {
                 content: text_editor::Content::new(),
@@ -72,7 +73,7 @@ impl Editor {
                 case_sensitive: false,
             },
             Task::perform(
-                set_pdpw_path(PathBuf::from(pdpw_file_path)),
+                set_pdpw_path(PathBuf::from((*pdpw_file_path).as_str())),
                 Message::SetPdpwPath,
             ),
         )
@@ -117,7 +118,7 @@ impl Editor {
                     }
                     Err(error) => self.error = Some(format!("{error:?}")),
                 }
-                widget::focus_next()
+                focus_next()
             }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -126,9 +127,9 @@ impl Editor {
                     ..
                 }) => {
                     if modifiers.shift() {
-                        widget::focus_previous()
+                        focus_previous()
                     } else {
-                        widget::focus_next()
+                        focus_next()
                     }
                 }
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -139,7 +140,7 @@ impl Editor {
                     "s" => self.run_save_file(),
                     "f" => {
                         self.modal = ModalState::Search;
-                        text_input::focus("search-input")
+                        focus("search-input")
                     }
                     _ => Task::none(),
                 },
@@ -227,16 +228,16 @@ impl Editor {
             }
             Message::OpenSearch => {
                 self.modal = ModalState::Search;
-                text_input::focus("search-input")
+                focus("search-input")
             }
             Message::OpenSetPin => {
                 self.modal = ModalState::UpdatePin;
-                text_input::focus("old-pin-input")
+                focus("old-pin-input")
             }
             Message::Search => {
                 self.hide_modal();
                 self.execute_search(false);
-                widget::focus_next()
+                focus_next()
             }
             Message::SearchString(search_string) => {
                 self.search_string = search_string;
@@ -248,7 +249,7 @@ impl Editor {
             }
             Message::SetPdpwPath(pdpw_file) => {
                 self.pdpw_file = pdpw_file;
-                text_input::focus("pin-input")
+                focus("pin-input")
             }
         }
     }
@@ -268,7 +269,8 @@ impl Editor {
                 self.search_string.to_lowercase(),
             )
         };
-        let (cursor_line, cursor_offset) = self.content.cursor_position();
+        let cursor = self.content.cursor();
+        let (cursor_line, cursor_offset) = (cursor.position.line, cursor.position.column);
         for (line_number, line) in text.lines().enumerate() {
             if line_number >= cursor_line
                 && let Some(mut offset) = line.find(search_string.as_str())
@@ -320,7 +322,7 @@ impl Editor {
             button(text("Save")).on_press(Message::SavePdpwFile),
             button(text("Search")).on_press(Message::OpenSearch),
             button(text("Set Pin")).on_press(Message::OpenSetPin),
-            horizontal_space(),
+            Space::new().width(Length::Fill),
             text(format!("v{VERSION}")),
         ]
         .spacing(10)
@@ -338,9 +340,10 @@ impl Editor {
             } else {
                 info
             }),
-            horizontal_space(),
+            Space::new().width(Length::Fill),
             text({
-                let (line, column) = self.content.cursor_position();
+                let cursor = self.content.cursor();
+                let (line, column) = (cursor.position.line, cursor.position.column);
 
                 format!("{}:{}", line + 1, column + 1)
             })
@@ -421,7 +424,8 @@ impl Editor {
                             .on_input(Message::SearchString)
                             .on_submit(Message::Search)
                             .padding(5),
-                        checkbox("case sensitive", self.case_sensitive)
+                        checkbox(self.case_sensitive)
+                            .label("case sensitive")
                             .on_toggle(Message::ToggleCaseSensitive),
                         button(text("Search")).on_press(Message::Search),
                     ]
