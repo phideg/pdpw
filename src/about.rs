@@ -18,7 +18,7 @@ impl MsgPopup {
     }
 
     pub(crate) fn update(&mut self, _message: Message) -> Task<Message> {
-        window::get_latest().and_then(window::close)
+        window::latest().and_then(window::close)
     }
 
     pub(crate) fn view(&'_ self) -> Element<'_, Message> {

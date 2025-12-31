@@ -10,10 +10,10 @@ textfile containing whatever you did put there 🤷‍♂️.
 
 📢 Note: pdpw implements a forwarding Global Allocator to write a free pattern,
 after memory got released. That way passwords no do not remain as clear text in
-main memory. Also as soon as you close pdpw it will cleanup your clipboard in 
+main memory. Also as soon as you close pdpw it will cleanup your clipboard in
 order to prevent leakage of passwords. In case you do not copy and paste your
 passwords and just look them up and type them manually you can opt out of the
-cleanup step using the `--skip-clipboard-cleanup` command line flag. 
+cleanup step using the `--skip-clipboard-cleanup` command line flag.
 
 ## How to to install
 
@@ -47,7 +47,9 @@ Add following line to `/etc/mime.types`
 application/pdpw                                pdpw
 ```
 
-Now create a `pdpw.desktop` file in either `~/.local/share/applications` or
+Now copy the `pdpw_icon.svg` from this repository to `/usr/share/icons`.
+
+Next create a `pdpw.desktop` file in either `~/.local/share/applications` or
 `/usr/share/applications` in case you want to configure `pdpw` for all users.
 
 The desktop file should contain similar contents
@@ -57,7 +59,7 @@ The desktop file should contain similar contents
 Type=Application
 Name=PD Password
 Comment=Encrypted File as Password Manager
-Icon=/usr/share/icons/breeze/mimetypes/16/application-pgp-keys.svg
+Icon=/usr/share/icons/pdpw_icon.svg
 Exec=pdpw %F
 Terminal=false
 Categories=Utility;TextEditor

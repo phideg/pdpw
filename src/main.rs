@@ -44,9 +44,14 @@ Options:
         if std::io::stdin().is_terminal() {
             println!("{help_message}");
         } else {
-            iced::application("pdpw - About", MsgPopup::update, MsgPopup::view)
-                .run_with(move || MsgPopup::new(help_message))
-                .unwrap();
+            let help = std::sync::Arc::new(help_message);
+            iced::application(
+                move || MsgPopup::new((*help).clone()),
+                MsgPopup::update,
+                MsgPopup::view,
+            )
+            .run()
+            .unwrap();
         }
         if err.is_some() {
             std::process::exit(1);
@@ -97,10 +102,15 @@ Options:
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse_arguments()?;
 
-    iced::application("pdpw - password store", Editor::update, Editor::view)
-        .subscription(Editor::subscription)
-        .default_font(iced::Font::MONOSPACE)
-        .run_with(move || Editor::new(&args.pdpw_file))?;
+    let pdpw_file = std::sync::Arc::new(args.pdpw_file);
+    iced::application(
+        move || Editor::new(pdpw_file.clone()),
+        Editor::update,
+        Editor::view,
+    )
+    .subscription(Editor::subscription)
+    .default_font(iced::Font::MONOSPACE)
+    .run()?;
 
     if !args.skip_cleanup {
         // clear clipboard at the end
