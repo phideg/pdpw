@@ -108,6 +108,7 @@ fn main() -> anyhow::Result<()> {
         Editor::update,
         Editor::view,
     )
+    .title("PdPw - Your Personal Passvault")
     .subscription(Editor::subscription)
     .default_font(iced::Font::MONOSPACE)
     .run()?;
