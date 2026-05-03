@@ -114,7 +114,7 @@ impl Editor {
                 match result {
                     Ok(contents) => {
                         self.hide_modal();
-                        self.content = text_editor::Content::with_text(&contents)
+                        self.content = text_editor::Content::with_text(&contents);
                     }
                     Err(error) => self.error = Some(format!("{error:?}")),
                 }
@@ -186,13 +186,13 @@ impl Editor {
             }
             Message::SavePdpwFile => self.run_save_file(),
             Message::SetNewPassword => {
-                if self.pin != self.old_pin {
-                    self.error = Some("Old password does not match!".into());
-                    Task::none()
-                } else {
+                if self.pin == self.old_pin {
                     self.pin = self.new_pin.clone();
                     self.hide_modal();
                     self.run_save_file()
+                } else {
+                    self.error = Some("Old password does not match!".into());
+                    Task::none()
                 }
             }
             Message::FileSaved(result) => {
@@ -201,7 +201,7 @@ impl Editor {
                     Ok(path) => self.pdpw_file = path,
                     Err(e) => {
                         self.is_dirty = true;
-                        self.error = Some(format!("{e:?}"))
+                        self.error = Some(format!("{e:?}"));
                     }
                 }
                 Task::none()

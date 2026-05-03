@@ -11,7 +11,7 @@ unsafe impl std::alloc::GlobalAlloc for SecureGlobalAlloc {
         unsafe {
             let raw_slice = std::slice::from_raw_parts_mut(ptr, layout.size());
             raw_slice.fill(0xFF);
-            std::alloc::System.dealloc(ptr, layout)
+            std::alloc::System.dealloc(ptr, layout);
         }
     }
 }

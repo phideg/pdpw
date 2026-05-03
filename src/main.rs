@@ -26,7 +26,7 @@ struct Cli {
 impl Cli {
     fn print_help(prog_name: &str, err: Option<&str>) {
         let mut help_message = format!(
-            r#"
+            r"
 Simple passvault application [v{VERSION}]
 
 Synopsis:
@@ -36,7 +36,7 @@ Options:
     --skip-clipboard-cleanup      Do not cleanup OS clipboard on program exit
     --help                        Print this message
 
-"#
+"
         );
         if let Some(err_msg) = err.as_ref() {
             help_message = format!("{err_msg}\n\n{help_message}");
@@ -62,7 +62,7 @@ Options:
 
     fn parse_arguments() -> anyhow::Result<Self> {
         let args: Vec<String> = std::env::args().collect();
-        let prog_name = args.first().map(|n| n.as_str()).unwrap_or("pdpw");
+        let prog_name = args.first().map_or("pdpw", std::string::String::as_str);
         if args.len() > 3 {
             Cli::print_help(prog_name, Some("Error: Wrong number of arguments!"));
         }
@@ -81,16 +81,15 @@ Options:
             dirs::home_dir()
                 .and_then(|p| {
                     let p = p.join(DEFAULT_FILE_NAME);
-                    p.to_str().map(|p| p.to_string())
+                    p.to_str().map(std::string::ToString::to_string)
                 })
                 .unwrap_or_else(|| "{DEFAULT_FILE_NAME}".to_string())
         } else {
-            args.last()
-                .map(|path| path.to_string())
+            args.last().cloned()
                 .ok_or(anyhow!("Invalid pdpw file"))?
         };
         if !pdpw_file.ends_with(".pdpw") {
-            Cli::print_help(prog_name, Some("Error: Expected *.pdpw file!"))
+            Cli::print_help(prog_name, Some("Error: Expected *.pdpw file!"));
         }
         Ok(Self {
             pdpw_file,
