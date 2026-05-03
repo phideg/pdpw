@@ -57,7 +57,7 @@ pub(crate) enum Message {
 }
 
 impl Editor {
-    pub(crate) fn new(pdpw_file_path: std::sync::Arc<String>) -> (Self, Task<Message>) {
+    pub(crate) fn new(pdpw_file_path: &std::sync::Arc<String>) -> (Self, Task<Message>) {
         (
             Self {
                 content: text_editor::Content::new(),
@@ -101,6 +101,7 @@ impl Editor {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ActionPerformed(action) => {
@@ -114,7 +115,7 @@ impl Editor {
                 match result {
                     Ok(contents) => {
                         self.hide_modal();
-                        self.content = text_editor::Content::with_text(&contents)
+                        self.content = text_editor::Content::with_text(&contents);
                     }
                     Err(error) => self.error = Some(format!("{error:?}")),
                 }
@@ -154,16 +155,7 @@ impl Editor {
                     Task::none()
                 }
                 Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: keyboard::Key::Named(key::Named::Escape),
-                    ..
-                }) => {
-                    if self.modal != ModalState::Pin {
-                        self.hide_modal();
-                    }
-                    Task::none()
-                }
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: keyboard::Key::Named(key::Named::Enter),
+                    key: keyboard::Key::Named(key::Named::Escape | key::Named::Enter),
                     ..
                 }) => {
                     if self.modal != ModalState::Pin {
@@ -186,13 +178,13 @@ impl Editor {
             }
             Message::SavePdpwFile => self.run_save_file(),
             Message::SetNewPassword => {
-                if self.pin != self.old_pin {
-                    self.error = Some("Old password does not match!".into());
-                    Task::none()
-                } else {
+                if self.pin == self.old_pin {
                     self.pin = self.new_pin.clone();
                     self.hide_modal();
                     self.run_save_file()
+                } else {
+                    self.error = Some("Old password does not match!".into());
+                    Task::none()
                 }
             }
             Message::FileSaved(result) => {
@@ -201,7 +193,7 @@ impl Editor {
                     Ok(path) => self.pdpw_file = path,
                     Err(e) => {
                         self.is_dirty = true;
-                        self.error = Some(format!("{e:?}"))
+                        self.error = Some(format!("{e:?}"));
                     }
                 }
                 Task::none()
@@ -313,10 +305,12 @@ impl Editor {
         }
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn subscription(&self) -> Subscription<Message> {
         event::listen().map(Message::Event)
     }
 
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn view(&'_ self) -> Element<'_, Message> {
         let header = row![
             button(text("Save")).on_press(Message::SavePdpwFile),
@@ -449,19 +443,22 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::LoadError(s) => write!(f, "LoadError: {s}"),
-            Self::SaveError(s) => write!(f, "LoadError: {s}"),
+            Self::LoadError(s) | Self::SaveError(s) => write!(f, "LoadError: {s}"),
         }
     }
 }
 
 async fn load_content(path: PathBuf, pin: String) -> Result<Arc<String>, Error> {
-    let contents = load_pdpw_file(path.as_path(), &pin)
-        .await
-        .map_err(|e| Error::LoadError(format!("Couldn't load *pdpw file from {path:?}: [{e}]")))?;
+    let contents = load_pdpw_file(path.as_path(), &pin).await.map_err(|e| {
+        Error::LoadError(format!(
+            "Couldn't load *pdpw file from {}: [{e}]",
+            path.display()
+        ))
+    })?;
     Ok(Arc::new(contents))
 }
 
+#[allow(clippy::unused_async)]
 async fn set_pdpw_path(path: PathBuf) -> PathBuf {
     path
 }
