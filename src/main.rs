@@ -5,7 +5,7 @@ mod galloc;
 mod modal;
 mod store;
 
-use std::io::IsTerminal;
+use std::{io::IsTerminal, path::Path};
 
 use about::MsgPopup;
 use anyhow::{Context, anyhow};
@@ -51,7 +51,7 @@ Options:
                 MsgPopup::view,
             )
             .run()
-            .unwrap();
+            .expect("Failed to run application!");
         }
         if err.is_some() {
             std::process::exit(1);
@@ -85,10 +85,12 @@ Options:
                 })
                 .unwrap_or_else(|| "{DEFAULT_FILE_NAME}".to_string())
         } else {
-            args.last().cloned()
-                .ok_or(anyhow!("Invalid pdpw file"))?
+            args.last().cloned().ok_or(anyhow!("Invalid pdpw file"))?
         };
-        if !pdpw_file.ends_with(".pdpw") {
+        if !Path::new(&pdpw_file)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("pdpw"))
+        {
             Cli::print_help(prog_name, Some("Error: Expected *.pdpw file!"));
         }
         Ok(Self {
@@ -103,7 +105,7 @@ fn main() -> anyhow::Result<()> {
 
     let pdpw_file = std::sync::Arc::new(args.pdpw_file);
     iced::application(
-        move || Editor::new(pdpw_file.clone()),
+        move || Editor::new(&pdpw_file.clone()),
         Editor::update,
         Editor::view,
     )

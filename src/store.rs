@@ -22,7 +22,7 @@ pub(crate) async fn load_pdpw_file(pdpw_file: &Path, pin: &str) -> anyhow::Resul
             String::new()
         }
     } else {
-        eprintln!("{pdpw_file:?} is not a *.{PDPW_EXTENSION} file");
+        eprintln!("{} is not a *.{PDPW_EXTENSION} file", pdpw_file.display());
         std::process::exit(2);
     };
     Ok(passwords)

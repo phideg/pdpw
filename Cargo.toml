@@ -9,14 +9,11 @@ pedantic = "warn"
 
 # Cherry-pick useful restriction lints (enable only what fits your project)
 unwrap_used = "warn"
-expect_used = "warn"
 panic = "warn"
 todo = "warn"
 unimplemented = "warn"
 unreachable = "warn"
 dbg_macro = "warn"
-print_stdout = "warn"
-print_stderr = "warn"
 
 # Allow some pedantic lints that might be too strict for your codebase
 # (uncomment and adjust as needed)

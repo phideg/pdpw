@@ -17,6 +17,7 @@ impl MsgPopup {
         (Self { msg }, Task::none())
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn update(&mut self, _message: Message) -> Task<Message> {
         window::latest().and_then(window::close)
     }
